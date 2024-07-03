@@ -1,0 +1,46 @@
+[project]
+name = "summarizium"
+version = "0.0.0"
+authors = [{name = "Sébastien De Revière"},]
+description = ""
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+# dependencies = [
+#     "",
+# ]
+
+[project.optional-dependencies]
+test = ["pytest"]
+lint_and_format = [
+    "ruff",
+]
+pypi = [
+    "twine",
+    "wheel",
+]
+ci = [
+    "pytest",
+    "ruff",
+]
+
+[projects.urls]
+Homepage = "https://github.com/sderev/summarizium"
+Documentation = "https://github.com/sderev/summarizium"
+Repository = "https://github.com/sderev/summarizium"
+Changelog = "https://github.com/sderev/summarizium/releases"
+Issues = "https://github.com/sderev/summarizium/issues"
+
+# [project.scripts]
+# summarizium = "summarizium.cli:cli"
+
+[tool.ruff]
+line-length = 100
+lint.extend-select = ["I001"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
