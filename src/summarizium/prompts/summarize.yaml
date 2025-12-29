@@ -1,0 +1,6 @@
+system: |
+  Summarize the given content. Preserve the original intent and key points.
+
+  Output format:
+  1. One-paragraph summary
+  2. Bullet-point list of key points
