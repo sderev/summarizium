@@ -1,18 +1,24 @@
 [project]
 name = "summarizium"
-version = "0.0.0"
+version = "0.1.0"
 authors = [{name = "Sébastien De Revière"},]
 description = ""
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
-# dependencies = [
-#     "",
-# ]
+dependencies = [
+    "click>=8.0",
+    "youtube-transcript-api>=1.0",
+    "validators",
+    "httpx",
+    "strip-tags",
+    "lmterminal==0.0.43",
+    "PyYAML",
+]
 
 [project.optional-dependencies]
 test = ["pytest"]
@@ -28,19 +34,41 @@ ci = [
     "ruff",
 ]
 
-[projects.urls]
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "scriv[toml]>=1.5.0",
+]
+
+[project.urls]
 Homepage = "https://github.com/sderev/summarizium"
 Documentation = "https://github.com/sderev/summarizium"
 Repository = "https://github.com/sderev/summarizium"
 Changelog = "https://github.com/sderev/summarizium/releases"
 Issues = "https://github.com/sderev/summarizium/issues"
 
-# [project.scripts]
-# summarizium = "summarizium.cli:cli"
+[project.scripts]
+summarize = "summarizium.cli:summarize"
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
 
 [tool.ruff]
 line-length = 100
-lint.extend-select = ["I001"]
+
+[tool.ruff.lint]
+extend-select = ["I001"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.scriv]
+version = "literal: pyproject.toml: project.version"
+format = "md"
+md_header_level = 2
+output_file = "CHANGELOG.md"
+fragment_directory = "changelog.d"
+new_fragment_template = "file: changelog.d/templates/fragment.md.j2"
+categories = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"]
+entry_title_template = "{{ version }} - {{ date.strftime('%Y-%m-%d') }}"
