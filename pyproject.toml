@@ -37,6 +37,7 @@ ci = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "pytest-cov>=7.0.0",
     "scriv[toml]>=1.5.0",
 ]
 
