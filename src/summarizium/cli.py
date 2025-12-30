@@ -11,6 +11,11 @@ from . import core, web, youtube
 ERROR_PREFIX = click.style("Error:", fg="red")
 
 
+def _looks_like_file_path(text: str) -> bool:
+    """Check if text looks like a file path."""
+    return "/" in text or text.startswith("~") or text.startswith(".")
+
+
 def load_source_content(source: tuple[str, ...]) -> str:
     """
     Load source content from a file path or return joined text.
@@ -26,6 +31,9 @@ def load_source_content(source: tuple[str, ...]) -> str:
             except OSError as error:
                 click.secho(f"{ERROR_PREFIX} {error}", err=True)
                 sys.exit(1)
+        elif _looks_like_file_path(source[0]) and not candidate.exists():
+            click.secho(f"{ERROR_PREFIX} File not found: {source[0]}", err=True)
+            sys.exit(1)
 
     return " ".join(source)
 

@@ -11,8 +11,8 @@ def test_summarize_youtube_uses_video_template(monkeypatch):
         return "", 0.0, {}
 
     monkeypatch.setattr(cli.core, "process_command", fake_process_command)
-    monkeypatch.setattr(cli.youtube, "get_transcript", lambda _: [{"text": "hi"}])
-    monkeypatch.setattr(cli.youtube, "format_transcript", lambda _: "formatted")
+    monkeypatch.setattr(cli.youtube, "get_transcript", lambda url: [{"text": "hi"}])
+    monkeypatch.setattr(cli.youtube, "format_transcript", lambda transcript: "formatted")
 
     runner = CliRunner()
     result = runner.invoke(cli.summarize, ["https://youtu.be/dQw4w9WgXcQ"])
@@ -58,3 +58,11 @@ def test_summarize_file_uses_file_content(monkeypatch, tmp_path):
     assert result.exit_code == 0
     assert called["template"] == "summarize"
     assert called["prompt_input"] == "file content"
+
+
+def test_summarize_nonexistent_file_shows_error():
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, ["/nonexistent/path/file.txt"])
+
+    assert result.exit_code == 1
+    assert "File not found" in result.output

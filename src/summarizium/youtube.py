@@ -6,10 +6,19 @@ from xml.etree.ElementTree import ParseError
 import click
 
 try:
-    from youtube_transcript_api import NoTranscriptFound, TranscriptsDisabled, YouTubeTranscriptApi
+    from youtube_transcript_api import (
+        NoTranscriptFound,
+        TranscriptsDisabled,
+        YouTubeRequestFailed,
+        YouTubeTranscriptApi,
+    )
 except ImportError:  # pragma: no cover - v1.x may not re-export errors
     from youtube_transcript_api import YouTubeTranscriptApi
-    from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
+    from youtube_transcript_api._errors import (
+        NoTranscriptFound,
+        TranscriptsDisabled,
+        YouTubeRequestFailed,
+    )
 
 try:
     from youtube_transcript_api import IpBlocked
@@ -127,6 +136,10 @@ def get_transcript(
     except IpBlocked:
         _error("YouTube blocked transcript access from this IP.")
         _warn_line("Warning: Try again later or use a different network.")
+        sys.exit(1)
+    except YouTubeRequestFailed as e:
+        _error(f"YouTube request failed: {e}")
+        _warn_line("Warning: YouTube may be rate limiting. Try again later.")
         sys.exit(1)
     except NoTranscriptFound:
         _error("No transcript found for the requested languages.")
