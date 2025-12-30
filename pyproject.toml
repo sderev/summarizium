@@ -55,6 +55,10 @@ summarize = "summarizium.cli:summarize"
 requires = ["uv_build>=0.9.18,<0.10.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-root = ""
+module-name = "summarizium"
+
 [tool.ruff]
 line-length = 100
 
