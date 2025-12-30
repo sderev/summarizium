@@ -63,6 +63,7 @@ extend-select = ["I001"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["network: networked tests"]
 
 [tool.scriv]
 version = "literal: pyproject.toml: project.version"

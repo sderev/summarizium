@@ -12,10 +12,10 @@ def fetch_page_text(url: str, timeout: float = 5.0) -> str:
     Fetches a webpage and strips HTML tags from it.
     """
     try:
-        response = httpx.get(url, timeout=timeout)
+        response = httpx.get(url, timeout=timeout, follow_redirects=True)
         response.raise_for_status()
     except httpx.HTTPError as error:
-        click.secho(f"{ERROR_PREFIX} {error}", err=True)
+        click.echo(f"{ERROR_PREFIX} {error}", err=True)
         sys.exit(1)
 
     return strip_tags(input=response.text, minify=True)
