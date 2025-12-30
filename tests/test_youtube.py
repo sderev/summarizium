@@ -189,3 +189,112 @@ def test_get_transcript_no_transcript_found_exits(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert exc.value.code == 1
     assert "No transcript found" in captured.err
+
+
+def test_is_youtube_video_requires_url():
+    with pytest.raises(AttributeError):
+        youtube.is_youtube_video(None)
+
+
+@pytest.mark.parametrize("value", [None, "not a url"])
+def test_extract_video_id_returns_none_for_invalid(value):
+    assert youtube.extract_video_id(value) is None
+
+
+def test_get_transcript_invalid_url_exits(capsys):
+    with pytest.raises(SystemExit) as exc:
+        youtube.get_transcript("not-a-url")
+
+    captured = capsys.readouterr()
+    assert exc.value.code == 1
+    assert "Invalid YouTube URL." in captured.err
+
+
+def test_get_transcript_defaults_language_to_en(monkeypatch):
+    transcript_data = [{"text": "hello", "start": 0.0, "duration": 1.0}]
+    captured = {}
+
+    monkeypatch.setattr(youtube, "_list_transcripts", lambda _: "list")
+
+    def fake_select(_list, languages):
+        captured["languages"] = languages
+        return StubTranscript(transcript_data)
+
+    monkeypatch.setattr(youtube, "_select_transcript", fake_select)
+
+    result = youtube.get_transcript("https://youtu.be/dQw4w9WgXcQ")
+
+    assert result == transcript_data
+    assert captured["languages"] == ["en"]
+
+
+def test_list_transcripts_type_error_uses_class_method(monkeypatch):
+    class Api:
+        def __init__(self):
+            raise TypeError("bad init")
+
+        @staticmethod
+        def list_transcripts(video_id):
+            return f"class:{video_id}"
+
+    monkeypatch.setattr(youtube, "YouTubeTranscriptApi", Api)
+
+    assert youtube._list_transcripts("video") == "class:video"
+
+
+def test_list_transcripts_instance_list_transcripts(monkeypatch):
+    class Api:
+        def __init__(self):
+            self.list_transcripts = lambda video_id: f"instance:{video_id}"
+
+    monkeypatch.setattr(youtube, "YouTubeTranscriptApi", Api)
+
+    assert youtube._list_transcripts("video") == "instance:video"
+
+
+def test_list_transcripts_unsupported_version_raises(monkeypatch):
+    class Api:
+        def __init__(self):
+            self.other = None
+
+    monkeypatch.setattr(youtube, "YouTubeTranscriptApi", Api)
+
+    with pytest.raises(RuntimeError) as exc:
+        youtube._list_transcripts("video")
+
+    assert "Unsupported youtube-transcript-api version." in str(exc.value)
+
+
+def test_get_transcript_request_failed_exits(monkeypatch, capsys):
+    class StubRequestFailed(Exception):
+        pass
+
+    monkeypatch.setattr(youtube, "YouTubeRequestFailed", StubRequestFailed)
+    monkeypatch.setattr(
+        youtube,
+        "_list_transcripts",
+        lambda _: (_ for _ in ()).throw(StubRequestFailed("rate limited")),
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        youtube.get_transcript("https://youtu.be/dQw4w9WgXcQ", ["en"])
+
+    captured = capsys.readouterr()
+    assert exc.value.code == 1
+    assert "YouTube request failed: rate limited" in captured.err
+
+
+@pytest.mark.parametrize(
+    "timecode, expected",
+    [
+        (False, "Hello world"),
+        (True, "|0.0| Hello |1.5| world"),
+    ],
+)
+def test_format_transcript(timecode, expected):
+    transcript = [
+        {"text": "Hello", "start": 0.0},
+        {"text": "world", "start": 1.5},
+    ]
+
+    assert youtube.format_transcript(transcript, timecode=timecode) == expected

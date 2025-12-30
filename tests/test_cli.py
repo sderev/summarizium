@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import pytest
 from click.testing import CliRunner
 
 from summarizium import cli
@@ -66,3 +69,28 @@ def test_summarize_nonexistent_file_shows_error():
 
     assert result.exit_code == 1
     assert "File not found" in result.output
+
+
+def test_load_source_content_empty_returns_empty():
+    assert cli.load_source_content(()) == ""
+
+
+def test_load_source_content_joins_text():
+    assert cli.load_source_content(("hello", "world")) == "hello world"
+
+
+def test_load_source_content_read_error_exits(tmp_path, monkeypatch, capsys):
+    file_path = tmp_path / "input.txt"
+    file_path.write_text("content", encoding="utf-8")
+
+    def fail_read(*_args, **_kwargs):
+        raise OSError("read failed")
+
+    monkeypatch.setattr(Path, "read_text", fail_read)
+
+    with pytest.raises(SystemExit) as exc:
+        cli.load_source_content((str(file_path),))
+
+    captured = capsys.readouterr()
+    assert exc.value.code == 1
+    assert "read failed" in captured.err
