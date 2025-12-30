@@ -9,11 +9,77 @@ from lmterminal.lib import DEFAULT_MODEL
 from . import core, web, youtube
 
 ERROR_PREFIX = click.style("Error:", fg="red")
+COMMON_TLDS = (
+    ".com",
+    ".org",
+    ".io",
+    ".net",
+    ".dev",
+    ".edu",
+    ".gov",
+    ".co",
+    ".me",
+    ".app",
+    ".tech",
+    ".ai",
+    ".fr",
+    ".uk",
+    ".de",
+)
 
 
 def _looks_like_file_path(text: str) -> bool:
     """Check if text looks like a file path."""
     return "/" in text or text.startswith("~") or text.startswith(".")
+
+
+def _looks_like_domain(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped or any(char.isspace() for char in stripped):
+        return False
+    if stripped.startswith(("/", ".", "~")):
+        return False
+    separators = ("/", "?", "#")
+    cut = len(stripped)
+    for sep in separators:
+        index = stripped.find(sep)
+        if index != -1 and index < cut:
+            cut = index
+    host = stripped[:cut]
+    if ":" in host:
+        host = host.split(":", 1)[0]
+    if not host:
+        return False
+    return host.lower().endswith(COMMON_TLDS)
+
+
+def _normalize_domain_url(text: str) -> str | None:
+    if not _looks_like_domain(text):
+        return None
+    candidate = f"https://{text}"
+    if validators.url(candidate):
+        return candidate
+    return None
+
+
+def _read_file_content(source: tuple[str, ...]) -> str | None:
+    if len(source) != 1:
+        return None
+
+    candidate = Path(source[0]).expanduser()
+    if candidate.is_file():
+        try:
+            return candidate.read_text(encoding="utf-8")
+        except OSError as error:
+            click.echo(f"{ERROR_PREFIX} {error}", err=True)
+            sys.exit(1)
+    if _looks_like_file_path(source[0]) and not candidate.exists():
+        if _looks_like_domain(source[0]):
+            return None
+        click.echo(f"{ERROR_PREFIX} File not found: {source[0]}", err=True)
+        sys.exit(1)
+
+    return None
 
 
 def load_source_content(source: tuple[str, ...]) -> str:
@@ -23,17 +89,9 @@ def load_source_content(source: tuple[str, ...]) -> str:
     if not source:
         return ""
 
-    if len(source) == 1:
-        candidate = Path(source[0]).expanduser()
-        if candidate.is_file():
-            try:
-                return candidate.read_text(encoding="utf-8")
-            except OSError as error:
-                click.secho(f"{ERROR_PREFIX} {error}", err=True)
-                sys.exit(1)
-        elif _looks_like_file_path(source[0]) and not candidate.exists():
-            click.secho(f"{ERROR_PREFIX} File not found: {source[0]}", err=True)
-            sys.exit(1)
+    file_content = _read_file_content(source)
+    if file_content is not None:
+        return file_content
 
     return " ".join(source)
 
@@ -104,7 +162,15 @@ def summarize(
     elif source_str and validators.url(source_str):
         prompt_input = web.fetch_page_text(source_str)
     else:
-        prompt_input = load_source_content(source)
+        file_content = _read_file_content(source)
+        if file_content is not None:
+            prompt_input = file_content
+        else:
+            domain_url = _normalize_domain_url(source_str)
+            if domain_url:
+                prompt_input = web.fetch_page_text(domain_url)
+            else:
+                prompt_input = " ".join(source)
 
     core.process_command(
         template=template,

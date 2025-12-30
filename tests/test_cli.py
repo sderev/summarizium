@@ -43,6 +43,55 @@ def test_summarize_web_uses_web_fetch(monkeypatch):
     assert called["prompt_input"] == "web content"
 
 
+@pytest.mark.parametrize("domain", ("ft.com", "example.org"))
+def test_summarize_domain_prepends_https(monkeypatch, domain):
+    called = {}
+    fetched = {}
+
+    def fake_process_command(**kwargs):
+        called.update(kwargs)
+        return "", 0.0, {}
+
+    def fake_fetch_page_text(url):
+        fetched["url"] = url
+        return "web content"
+
+    monkeypatch.setattr(cli.core, "process_command", fake_process_command)
+    monkeypatch.setattr(cli.web, "fetch_page_text", fake_fetch_page_text)
+
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, [domain])
+
+    assert result.exit_code == 0
+    assert fetched["url"] == f"https://{domain}"
+    assert called["template"] == "summarize"
+    assert called["prompt_input"] == "web content"
+
+
+def test_summarize_domain_with_path_prepends_https(monkeypatch):
+    called = {}
+    fetched = {}
+
+    def fake_process_command(**kwargs):
+        called.update(kwargs)
+        return "", 0.0, {}
+
+    def fake_fetch_page_text(url):
+        fetched["url"] = url
+        return "web content"
+
+    monkeypatch.setattr(cli.core, "process_command", fake_process_command)
+    monkeypatch.setattr(cli.web, "fetch_page_text", fake_fetch_page_text)
+
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, ["example.com/path"])
+
+    assert result.exit_code == 0
+    assert fetched["url"] == "https://example.com/path"
+    assert called["template"] == "summarize"
+    assert called["prompt_input"] == "web content"
+
+
 def test_summarize_file_uses_file_content(monkeypatch, tmp_path):
     called = {}
 
@@ -63,9 +112,66 @@ def test_summarize_file_uses_file_content(monkeypatch, tmp_path):
     assert called["prompt_input"] == "file content"
 
 
-def test_summarize_nonexistent_file_shows_error():
+def test_summarize_domain_prefers_file(monkeypatch, tmp_path):
+    called = {}
+
+    def fake_process_command(**kwargs):
+        called.update(kwargs)
+        return "", 0.0, {}
+
+    file_path = tmp_path / "data.com"
+    file_path.write_text("file content", encoding="utf-8")
+
+    def fail_fetch(*_args, **_kwargs):
+        raise AssertionError("fetch_page_text should not be called for files")
+
+    monkeypatch.setattr(cli.core, "process_command", fake_process_command)
+    monkeypatch.setattr(cli.web, "fetch_page_text", fail_fetch)
+
     runner = CliRunner()
-    result = runner.invoke(cli.summarize, ["/nonexistent/path/file.txt"])
+    result = runner.invoke(cli.summarize, [str(file_path)])
+
+    assert result.exit_code == 0
+    assert called["template"] == "summarize"
+    assert called["prompt_input"] == "file content"
+
+
+def test_summarize_path_like_missing_shows_error(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, ["./notes.com"])
+
+    assert result.exit_code == 1
+    assert "File not found" in result.output
+
+
+def test_summarize_plain_text_does_not_trigger_domain(monkeypatch, tmp_path):
+    called = {}
+
+    def fake_process_command(**kwargs):
+        called.update(kwargs)
+        return "", 0.0, {}
+
+    def fail_fetch(*_args, **_kwargs):
+        raise AssertionError("fetch_page_text should not be called for plain text")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli.core, "process_command", fake_process_command)
+    monkeypatch.setattr(cli.web, "fetch_page_text", fail_fetch)
+
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, ["notes.txt"])
+
+    assert result.exit_code == 0
+    assert called["template"] == "summarize"
+    assert called["prompt_input"] == "notes.txt"
+
+
+def test_summarize_nonexistent_file_shows_error(tmp_path):
+    missing_path = tmp_path / "missing.txt"
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, [str(missing_path)])
 
     assert result.exit_code == 1
     assert "File not found" in result.output
