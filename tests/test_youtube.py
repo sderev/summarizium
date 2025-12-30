@@ -38,11 +38,16 @@ class StubTranscriptList:
         return iter([t for t in [self._transcript, self._generated] if t is not None])
 
 
-def test_extract_video_id_handles_url_variants():
-    video_id = "dQw4w9WgXcQ"
-    assert youtube.extract_video_id(f"https://www.youtube.com/watch?v={video_id}") == video_id
-    assert youtube.extract_video_id(f"https://youtu.be/{video_id}") == video_id
-    assert youtube.extract_video_id(f"https://www.youtube.com/shorts/{video_id}") == video_id
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://youtu.be/dQw4w9WgXcQ",
+        "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+    ],
+)
+def test_extract_video_id_handles_url_variants(url):
+    assert youtube.extract_video_id(url) == "dQw4w9WgXcQ"
 
 
 def test_get_transcript_v1_list_path(monkeypatch):
@@ -130,42 +135,31 @@ def test_get_transcript_parse_error_exits(monkeypatch, capsys):
     assert "Failed to parse transcript data" in captured.err
 
 
-def test_get_transcript_transcripts_disabled_exits(monkeypatch, capsys):
-    class StubTranscriptsDisabled(Exception):
-        pass
+@pytest.mark.parametrize(
+    "exception_attr, message, expected",
+    [
+        ("TranscriptsDisabled", None, "No transcripts available"),
+        ("IpBlocked", None, "blocked transcript access"),
+        ("YouTubeRequestFailed", "rate limited", "YouTube request failed: rate limited"),
+    ],
+)
+def test_get_transcript_api_errors_exit(monkeypatch, capsys, exception_attr, message, expected):
+    stub_exception = type(f"Stub{exception_attr}", (Exception,), {})
+    monkeypatch.setattr(youtube, exception_attr, stub_exception)
 
-    monkeypatch.setattr(youtube, "TranscriptsDisabled", StubTranscriptsDisabled)
-    monkeypatch.setattr(
-        youtube,
-        "_list_transcripts",
-        lambda _: (_ for _ in ()).throw(StubTranscriptsDisabled()),
-    )
+    def raise_error(_):
+        if message is None:
+            raise stub_exception()
+        raise stub_exception(message)
 
-    with pytest.raises(SystemExit) as exc:
-        youtube.get_transcript("https://youtu.be/dQw4w9WgXcQ", ["en"])
-
-    captured = capsys.readouterr()
-    assert exc.value.code == 1
-    assert "No transcripts available" in captured.err
-
-
-def test_get_transcript_ip_blocked_exits(monkeypatch, capsys):
-    class StubIpBlocked(Exception):
-        pass
-
-    monkeypatch.setattr(youtube, "IpBlocked", StubIpBlocked)
-    monkeypatch.setattr(
-        youtube,
-        "_list_transcripts",
-        lambda _: (_ for _ in ()).throw(StubIpBlocked()),
-    )
+    monkeypatch.setattr(youtube, "_list_transcripts", raise_error)
 
     with pytest.raises(SystemExit) as exc:
         youtube.get_transcript("https://youtu.be/dQw4w9WgXcQ", ["en"])
 
     captured = capsys.readouterr()
     assert exc.value.code == 1
-    assert "blocked transcript access" in captured.err
+    assert expected in captured.err
 
 
 def test_get_transcript_no_transcript_found_exits(monkeypatch, capsys):
@@ -263,25 +257,6 @@ def test_list_transcripts_unsupported_version_raises(monkeypatch):
         youtube._list_transcripts("video")
 
     assert "Unsupported youtube-transcript-api version." in str(exc.value)
-
-
-def test_get_transcript_request_failed_exits(monkeypatch, capsys):
-    class StubRequestFailed(Exception):
-        pass
-
-    monkeypatch.setattr(youtube, "YouTubeRequestFailed", StubRequestFailed)
-    monkeypatch.setattr(
-        youtube,
-        "_list_transcripts",
-        lambda _: (_ for _ in ()).throw(StubRequestFailed("rate limited")),
-    )
-
-    with pytest.raises(SystemExit) as exc:
-        youtube.get_transcript("https://youtu.be/dQw4w9WgXcQ", ["en"])
-
-    captured = capsys.readouterr()
-    assert exc.value.code == 1
-    assert "YouTube request failed: rate limited" in captured.err
 
 
 @pytest.mark.parametrize(
