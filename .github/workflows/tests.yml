@@ -30,4 +30,4 @@ jobs:
         run: uv sync --group dev
 
       - name: Run pytest
-        run: uv run --group dev pytest -m "not real and not network"
+        run: uv run --group dev pytest -m "not real and not network and not expensive"

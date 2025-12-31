@@ -57,7 +57,10 @@ extend-select = ["I001"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["network: networked tests"]
+markers = [
+  "network: networked tests",
+  "expensive: tests that call paid APIs (skipped in CI by default)",
+]
 
 [tool.scriv]
 version = "literal: pyproject.toml: project.version"
