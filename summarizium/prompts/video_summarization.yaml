@@ -1,5 +1,6 @@
 system: |
   Summarize this video transcript.
+  Respond in the same language as the input content.
 
   Output format:
   1. Summary: One paragraph covering main ideas and message

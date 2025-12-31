@@ -38,22 +38,28 @@ def test_ensure_templates_installed_writes_config_and_templates(tmp_path, monkey
         assert config["tools"][template.stem] == str(destination)
 
 
-def test_ensure_templates_installed_skips_existing(tmp_path, monkeypatch):
+def test_ensure_templates_installed_updates_existing(tmp_path, monkeypatch):
     monkeypatch.setattr(core.Path, "home", lambda: tmp_path)
     dest_dir = tmp_path / ".config" / "lmt" / "templates"
     dest_dir.mkdir(parents=True, exist_ok=True)
+    tools = {"keep": "value"}
     for template in core.PROMPTS_DIR.glob("*.yaml"):
         (dest_dir / template.name).write_text("present", encoding="utf-8")
+        tools[template.stem] = f"/stale/path/{template.name}"
 
     config_file = tmp_path / ".config" / "lmt" / "config.json"
     config_file.parent.mkdir(parents=True, exist_ok=True)
-    config_file.write_text(json.dumps({"tools": {"keep": "value"}}), encoding="utf-8")
+    config_file.write_text(json.dumps({"tools": tools}), encoding="utf-8")
 
     core.ensure_templates_installed.cache_clear()
     core.ensure_templates_installed()
 
     config = json.loads(config_file.read_text(encoding="utf-8"))
-    assert config["tools"] == {"keep": "value"}
+    assert config["tools"]["keep"] == "value"
+    for template in core.PROMPTS_DIR.glob("*.yaml"):
+        destination = dest_dir / template.name
+        assert destination.read_text(encoding="utf-8") == template.read_text(encoding="utf-8")
+        assert config["tools"][template.stem] == str(destination)
 
 
 def test_process_command_normalizes_prompt_and_forces_no_stream(monkeypatch):
