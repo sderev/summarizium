@@ -15,7 +15,7 @@ ERROR_PREFIX = click.style("Error:", fg="red")
 @lru_cache(maxsize=1)
 def ensure_templates_installed() -> None:
     """
-    Install prompt templates to the lmterminal templates directory if missing.
+    Install and refresh prompt templates in the lmterminal templates directory.
     """
     dest_path = Path.home() / ".config" / "lmt" / "templates"
     dest_path.mkdir(parents=True, exist_ok=True)
@@ -34,10 +34,18 @@ def ensure_templates_installed() -> None:
 
     for file in PROMPTS_DIR.glob("*.yaml"):
         destination = dest_path / file.name
-        if not destination.exists():
+        template_name = file.stem
+        destination_exists = destination.exists()
+        needs_update = not destination_exists or destination.read_text(
+            encoding="utf-8"
+        ) != file.read_text(encoding="utf-8")
+
+        if needs_update:
             shutil.copy2(file, destination)
-            config["tools"][file.stem] = str(destination)
-            click.secho(f"Installed `{file.stem}` template.", fg="green")
+            action = "Installed" if not destination_exists else "Updated"
+            click.secho(f"{action} `{template_name}` template.", fg="green")
+
+        config["tools"].setdefault(template_name, str(destination))
 
     with config_file.open("w", encoding="utf-8") as file:
         json.dump(config, file, indent=4)

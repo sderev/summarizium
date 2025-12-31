@@ -38,7 +38,7 @@ def test_ensure_templates_installed_writes_config_and_templates(tmp_path, monkey
         assert config["tools"][template.stem] == str(destination)
 
 
-def test_ensure_templates_installed_skips_existing(tmp_path, monkeypatch):
+def test_ensure_templates_installed_updates_existing(tmp_path, monkeypatch):
     monkeypatch.setattr(core.Path, "home", lambda: tmp_path)
     dest_dir = tmp_path / ".config" / "lmt" / "templates"
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -53,7 +53,11 @@ def test_ensure_templates_installed_skips_existing(tmp_path, monkeypatch):
     core.ensure_templates_installed()
 
     config = json.loads(config_file.read_text(encoding="utf-8"))
-    assert config["tools"] == {"keep": "value"}
+    assert config["tools"]["keep"] == "value"
+    for template in core.PROMPTS_DIR.glob("*.yaml"):
+        destination = dest_dir / template.name
+        assert destination.read_text(encoding="utf-8") == template.read_text(encoding="utf-8")
+        assert config["tools"][template.stem] == str(destination)
 
 
 def test_process_command_normalizes_prompt_and_forces_no_stream(monkeypatch):

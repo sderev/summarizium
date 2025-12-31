@@ -1,5 +1,6 @@
 system: |
   Summarize the given content. Preserve the original intent and key points.
+  Respond in the same language as the input content.
 
   Output format:
   1. One-paragraph summary
