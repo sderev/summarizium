@@ -15,7 +15,9 @@ def test_summarize_youtube_uses_video_template(monkeypatch):
 
     monkeypatch.setattr(cli.core, "process_command", fake_process_command)
     monkeypatch.setattr(cli.youtube, "get_transcript", lambda url, languages=None: [{"text": "hi"}])
-    monkeypatch.setattr(cli.youtube, "format_transcript", lambda transcript: "formatted")
+    monkeypatch.setattr(
+        cli.youtube, "format_transcript", lambda transcript, timecode=False: "formatted"
+    )
 
     runner = CliRunner()
     result = runner.invoke(cli.summarize, ["https://youtu.be/dQw4w9WgXcQ"])
@@ -37,7 +39,7 @@ def test_summarize_youtube_passes_languages(monkeypatch):
 
     monkeypatch.setattr(cli.core, "process_command", fake_process_command)
     monkeypatch.setattr(cli.youtube, "get_transcript", fake_get_transcript)
-    monkeypatch.setattr(cli.youtube, "format_transcript", lambda transcript: "text")
+    monkeypatch.setattr(cli.youtube, "format_transcript", lambda transcript, timecode=False: "text")
 
     runner = CliRunner()
     result = runner.invoke(cli.summarize, ["-l", "fr", "-l", "en", "https://youtu.be/dQw4w9WgXcQ"])
@@ -58,13 +60,55 @@ def test_summarize_youtube_default_languages_is_none(monkeypatch):
 
     monkeypatch.setattr(cli.core, "process_command", fake_process_command)
     monkeypatch.setattr(cli.youtube, "get_transcript", fake_get_transcript)
-    monkeypatch.setattr(cli.youtube, "format_transcript", lambda transcript: "text")
+    monkeypatch.setattr(cli.youtube, "format_transcript", lambda transcript, timecode=False: "text")
 
     runner = CliRunner()
     result = runner.invoke(cli.summarize, ["https://youtu.be/dQw4w9WgXcQ"])
 
     assert result.exit_code == 0
     assert transcript_args["languages"] is None
+
+
+def test_summarize_youtube_timestamps_flag(monkeypatch):
+    format_args = {}
+
+    def fake_format_transcript(transcript, timecode=False):
+        format_args["timecode"] = timecode
+        return "formatted"
+
+    def fake_process_command(**kwargs):
+        return "", 0.0, {}
+
+    monkeypatch.setattr(cli.core, "process_command", fake_process_command)
+    monkeypatch.setattr(cli.youtube, "get_transcript", lambda url, languages=None: [{"text": "hi"}])
+    monkeypatch.setattr(cli.youtube, "format_transcript", fake_format_transcript)
+
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, ["-t", "https://youtu.be/dQw4w9WgXcQ"])
+
+    assert result.exit_code == 0
+    assert format_args["timecode"] is True
+
+
+def test_summarize_youtube_no_timestamps_by_default(monkeypatch):
+    format_args = {}
+
+    def fake_format_transcript(transcript, timecode=False):
+        format_args["timecode"] = timecode
+        return "formatted"
+
+    def fake_process_command(**kwargs):
+        return "", 0.0, {}
+
+    monkeypatch.setattr(cli.core, "process_command", fake_process_command)
+    monkeypatch.setattr(cli.youtube, "get_transcript", lambda url, languages=None: [{"text": "hi"}])
+    monkeypatch.setattr(cli.youtube, "format_transcript", fake_format_transcript)
+
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, ["https://youtu.be/dQw4w9WgXcQ"])
+
+    assert result.exit_code == 0
+    assert format_args["timecode"] is False
 
 
 def test_summarize_web_uses_web_fetch(monkeypatch):
