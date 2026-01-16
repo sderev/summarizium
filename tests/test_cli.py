@@ -14,7 +14,7 @@ def test_summarize_youtube_uses_video_template(monkeypatch):
         return "", 0.0, {}
 
     monkeypatch.setattr(cli.core, "process_command", fake_process_command)
-    monkeypatch.setattr(cli.youtube, "get_transcript", lambda url: [{"text": "hi"}])
+    monkeypatch.setattr(cli.youtube, "get_transcript", lambda url, languages=None: [{"text": "hi"}])
     monkeypatch.setattr(cli.youtube, "format_transcript", lambda transcript: "formatted")
 
     runner = CliRunner()
@@ -23,6 +23,48 @@ def test_summarize_youtube_uses_video_template(monkeypatch):
     assert result.exit_code == 0
     assert called["template"] == "video_summarization"
     assert called["prompt_input"] == "formatted"
+
+
+def test_summarize_youtube_passes_languages(monkeypatch):
+    transcript_args = {}
+
+    def fake_get_transcript(url, languages=None):
+        transcript_args["languages"] = languages
+        return [{"text": "bonjour"}]
+
+    def fake_process_command(**kwargs):
+        return "", 0.0, {}
+
+    monkeypatch.setattr(cli.core, "process_command", fake_process_command)
+    monkeypatch.setattr(cli.youtube, "get_transcript", fake_get_transcript)
+    monkeypatch.setattr(cli.youtube, "format_transcript", lambda transcript: "text")
+
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, ["-l", "fr", "-l", "en", "https://youtu.be/dQw4w9WgXcQ"])
+
+    assert result.exit_code == 0
+    assert transcript_args["languages"] == ("fr", "en")
+
+
+def test_summarize_youtube_default_languages_is_none(monkeypatch):
+    transcript_args = {}
+
+    def fake_get_transcript(url, languages=None):
+        transcript_args["languages"] = languages
+        return [{"text": "hello"}]
+
+    def fake_process_command(**kwargs):
+        return "", 0.0, {}
+
+    monkeypatch.setattr(cli.core, "process_command", fake_process_command)
+    monkeypatch.setattr(cli.youtube, "get_transcript", fake_get_transcript)
+    monkeypatch.setattr(cli.youtube, "format_transcript", lambda transcript: "text")
+
+    runner = CliRunner()
+    result = runner.invoke(cli.summarize, ["https://youtu.be/dQw4w9WgXcQ"])
+
+    assert result.exit_code == 0
+    assert transcript_args["languages"] is None
 
 
 def test_summarize_web_uses_web_fetch(monkeypatch):
