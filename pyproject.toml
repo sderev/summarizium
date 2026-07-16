@@ -23,12 +23,12 @@ dependencies = [
 [dependency-groups]
 dev = [
     "hypothesis>=6.148.8",
-    "pytest>=8.0",
+    "pytest>=9.0.3",
     "pytest-cov>=7.0.0",
     "ruff",
     "scriv[toml]>=1.5.0",
     # urllib3 is a transitive dependency of scriv (via requests). Pinned to fix CVE-2026-21441.
-    "urllib3>=2.6.3",
+    "urllib3>=2.7.0",
 ]
 
 [project.urls]
