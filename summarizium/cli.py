@@ -133,6 +133,19 @@ def load_source_content(source: tuple[str, ...]) -> str:
     help="Disable colors and formatting, and print the raw response.",
 )
 @click.option(
+    "-l",
+    "--language",
+    "languages",
+    multiple=True,
+    help="Transcript language code (e.g., 'en', 'fr'). Can be repeated for fallback order.",
+)
+@click.option(
+    "-t",
+    "--timestamps",
+    is_flag=True,
+    help="Include timestamps in YouTube transcript.",
+)
+@click.option(
     "--debug",
     is_flag=True,
     default=False,
@@ -146,6 +159,8 @@ def summarize(
     tokens: bool,
     no_stream: bool,
     raw: bool,
+    languages: tuple[str, ...],
+    timestamps: bool,
     debug: bool,
 ) -> None:
     """
@@ -156,8 +171,8 @@ def summarize(
     prompt_input = ""
 
     if source_str and youtube.is_youtube_video(source_str):
-        transcript = youtube.get_transcript(source_str)
-        prompt_input = youtube.format_transcript(transcript)
+        transcript = youtube.get_transcript(source_str, languages=languages or None)
+        prompt_input = youtube.format_transcript(transcript, timecode=timestamps)
         template = "video_summarization"
     elif source_str and validators.url(source_str):
         prompt_input = web.fetch_page_text(source_str)
