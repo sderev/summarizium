@@ -30,7 +30,7 @@ COMMON_TLDS = (
 
 def _looks_like_file_path(text: str) -> bool:
     """Check if text looks like a file path."""
-    return "/" in text or text.startswith("~") or text.startswith(".")
+    return "/" in text or text.startswith(("~", "."))
 
 
 def _looks_like_domain(text: str) -> bool:
