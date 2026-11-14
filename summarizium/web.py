@@ -18,4 +18,4 @@ def fetch_page_text(url: str, timeout: float = 5.0) -> str:
         click.echo(f"{ERROR_PREFIX} {error}", err=True)
         sys.exit(1)
 
-    return strip_tags(input=response.text, minify=True)
+    return strip_tags(input=response.text, removes=["template"], minify=True)

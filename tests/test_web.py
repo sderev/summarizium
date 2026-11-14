@@ -38,6 +38,17 @@ def test_fetch_page_text_strips_html(monkeypatch):
     assert called["response"].raise_for_status_called is True
 
 
+def test_fetch_page_text_omits_template_contents(monkeypatch):
+    html = (
+        "<p>Visible</p><template><p hidden>Secret</p>"
+        '<script>window.secret()</script><img alt="Picture">'
+        "<template>Nested</template></template><p>After</p>"
+    )
+    monkeypatch.setattr(web.httpx, "get", lambda *_args, **_kwargs: StubResponse(html))
+
+    assert web.fetch_page_text("https://example.com") == "VisibleAfter"
+
+
 def test_fetch_page_text_http_error_exits(monkeypatch, capsys):
     def fake_get(*_args, **_kwargs):
         return StubResponse("ignored", raise_for_status_error=httpx.HTTPError("boom"))
